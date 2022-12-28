@@ -1,0 +1,1700 @@
+---
+title: "ani_heatmap"
+author: "Guillaume Jospin"
+date: "3/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+library(tibble)
+library(magrittr)
+library(gplots)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(plotly)
+library(DT)
+library(ape)
+library(phylogram)
+library(devtools)
+library(DECIPHER)
+# read in the ANI Matrix
+#if (!requireNamespace("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
+
+#BiocManager::install("ggtree")
+library(devtools)
+#install_github("lmc297/bactaxR")
+library(bactaxR)
+```
+
+
+# Original
+```{r include=FALSE}
+
+#my_distance_matrix <- makeFastANIDistMatrix(f="fastANI_marina_march2021.renamed.txt", keep_asym=FALSE)
+
+ani_table <- read.delim(file = "fastANI_April22.tsv", header = FALSE, sep = "\t", stringsAsFactors = FALSE)[, 1 : 3]
+ani_matrix <- as.data.frame(ani_table) %>% 
+  pivot_wider(., names_from="V2", values_from="V3") %>%
+  column_to_rownames("V1")
+ani_matrix[is.na(ani_matrix)] <- 74  
+ani_matrix_numeric <- sapply(ani_matrix, as.double)
+rownames(ani_matrix_numeric) <- rownames(ani_matrix)
+treeobj <- ape::read.tree(file="Final_FINAL_4122_RAxML_bipartitionsBranchLabels.New9Gs.redo.March2022.tree") 
+treobj_reroot <- ape::root(treeobj, outgroup="1-GCF_001399755.1_Thiohalorhabdus_denitrificans")
+
+# library(DECIPHER)
+#dend1 <- ReadDendrogram(file="clipboard") 
+
+# Alternatively to load from existing environment 
+#Tree$node.label <- NULL # Need to remove node labels
+# dend1 <- ReadDendrogram(textConnection(write.tree(treobj_reroot))) 
+# is_tip <- treobj_reroot$edge[,2] <= length(treobj_reroot$tip.label)
+ordered_tips <- treobj_reroot$edge[is_tip, 2]
+ordered_labels <- treobj_reroot$tip.label[ordered_tips]
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+
+
+# First Plot with small margins
+# par(mar = c(2, 2, 2, 2)) # Set the margin on all sides to 2
+# plot(1:10)
+# mtext("Small Margins", side = 3, line = 1, cex = 1.2)
+# mtext("par(mar = c(2, 2, 2, 2))", side = 3)
+#reordered_matrix <- reorder_mat(ani_matrix_numerix, ordered_labels)
+
+reordered_matrix <- as.data.frame(ani_matrix_numeric) %>% rownames_to_column('GNames') %>%
+  dplyr::arrange(match(GNames , ordered_labels)) %>%
+  column_to_rownames("GNames") 
+reordered_matrix_both <- reordered_matrix[,ordered_labels]
+reordered_matrix_mat <- as.matrix(reordered_matrix_both)
+
+par(mar = c(20, 2, 1, 20))
+png("heatmap_test4_Dec2022.png", res=300, width=55, height= 40,  units='in')
+h1<- heatmap.2( reordered_matrix_mat, 
+              dendrogram = c("both"),
+              trace="none",
+              density.info="none",
+              Rowv=dend1,
+              Colv=dend1,
+              key = TRUE,
+              col=my_palette_3,
+              srtCol=45,
+              # key.par=list(mgp=c(1.5, 0.5, 0),
+              #           mar=c(2.5, 2.5, 1, 0)),
+              lhei=c(1, 15),
+              lwid=c(1,15),
+              # lmat=rbind(c(4,3),c(2,1)),
+               margins=c(20,20)
+              )
+#h1
+dev.off()
+
+
+
+
+```
+
+# NEW split heatmap by taxa groups.
+# 1 Janthinobacterium + Duganella + Massilia
+# 2 Chromobacterium, Aquitalea, Iodobacter, and Archangium
+```{r split_heatmap}
+ani_table <- read.delim(file = "fastANI_April22.tsv", header = FALSE, sep = "\t", stringsAsFactors = FALSE)[, 1 : 3]
+ani_matrix <- as.data.frame(ani_table) %>% 
+  pivot_wider(., names_from="V2", values_from="V3") %>%
+  column_to_rownames("V1")
+ani_matrix[is.na(ani_matrix)] <- 74  
+ani_matrix_numeric <- sapply(ani_matrix, as.double)
+rownames(ani_matrix_numeric) <- rownames(ani_matrix)
+treeobj <- ape::read.tree(file="RAxML_bipartitionsBranchLabels.New9Gs.redo.April12_2022.tree") 
+
+
+
+# REMOVE the labels we don't want in tree 1
+tree1_removelist_1 <- grepl("Chromobacterium|Aquitalea|Iodobacter",treeobj$tip.label, perl= TRUE)
+pruned.tree_1<-drop.tip(treeobj,treeobj$tip.label[tree1_removelist_1])
+
+tree2_removelist_2 <- grepl("Janthinobacterium|Duganella|Massilia",treeobj$tip.label, perl= TRUE)
+pruned.tree_2<-drop.tip(treeobj,treeobj$tip.label[tree2_removelist_2])
+
+
+# Reroot the trees
+treobj_reroot_1 <- ape::root(pruned.tree_1, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1")
+treobj_reroot_2 <- ape::root(pruned.tree_2, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1")
+
+
+
+is_tip_1 <- treobj_reroot_1$edge[,2] <= length(treobj_reroot_1$tip.label)
+ordered_tips_1 <- treobj_reroot_1$edge[is_tip_1, 2]
+ordered_labels_1 <- treobj_reroot_1$tip.label[ordered_tips_1]
+ordered_labels_1_Sub <- gsub("ncbi-genomes-2022-01-24/","",ordered_labels_1, perl=TRUE)
+ordered_labels_1_Sub<- gsub(".fna$","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub("=_","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub(":","_",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_NODE.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_supercont.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_unitig_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_chromosome.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence001.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_map_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_1246.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+
+
+
+is_tip_2 <- treobj_reroot_2$edge[,2] <= length(treobj_reroot_2$tip.label)
+ordered_tips_2 <- treobj_reroot_2$edge[is_tip_2, 2]
+ordered_labels_2 <- treobj_reroot_2$tip.label[ordered_tips_2]
+ordered_labels_2_Sub <- gsub("ncbi-genomes-2022-01-24/","",ordered_labels_2, perl=TRUE)
+ordered_labels_2_Sub<- gsub(".fna$","",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub<- gsub("=_","",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub<- gsub(":","_",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_NODE.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_Scaffold.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_contig.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_supercont.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_unitig_.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_chromosome.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_sequence001.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_scaffold.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_Assembly.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_sequence.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_map_.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_Contig.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_2246.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+ordered_labels_2_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_2_Sub, perl=TRUE)
+
+
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+
+
+ani_matrix_1 <- as.data.frame(ani_table) %>% 
+  dplyr::filter( !grepl("Chromobacterium|Aquitalea|Iodobacter",V2, perl= TRUE))%>%
+  dplyr::mutate(col1 = gsub("ncbi-genomes-2022-01-24/","",V1, perl=TRUE),
+                col2 = gsub("ncbi-genomes-2022-01-24/","",V2, perl=TRUE),
+                col1 = gsub(".fna$","",col1, perl=TRUE),
+                col2 = gsub(".fna$","",col2, perl=TRUE),
+                col1 = gsub("=_","",col1, perl=TRUE),
+                col2 = gsub("=_","",col2, perl=TRUE),
+                col1 = gsub(":","_",col1, perl=TRUE),
+                col2 = gsub(":","_",col2, perl=TRUE),
+                col2 = gsub("_NODE.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_supercont.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_unitig_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_chromosome.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence001.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_map_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_1246.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("-assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_trimmed.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_NODE.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_supercont.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_unitig_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_chromosome.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence001.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_map_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_1246.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("-assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_trimmed.*(_GCF_.*)$","\\1",col1, perl=TRUE)) %>%
+  dplyr::select(-V1,-V2)%>%
+  unique()%>%
+  pivot_wider(., names_from="col2", values_from="V3") %>%
+  column_to_rownames("col1")
+ani_matrix_1[is.na(ani_matrix_1)] <- 74  
+ani_matrix_numeric_1 <- sapply(ani_matrix_1, as.double)
+rownames(ani_matrix_numeric_1) <- rownames(ani_matrix_1)
+
+
+
+
+ani_matrix_2 <- as.data.frame(ani_table) %>% 
+  dplyr::filter( !grepl("Janthinobacterium|Duganella|Massilia",V2, perl= TRUE))%>%
+  dplyr::mutate(col1 = gsub("ncbi-genomes-2022-01-24/","",V1, perl=TRUE),
+                col2 = gsub("ncbi-genomes-2022-01-24/","",V2, perl=TRUE),
+                col1 = gsub(".fna$","",col1, perl=TRUE),
+                col2 = gsub(".fna$","",col2, perl=TRUE),
+                col1 = gsub("=_","",col1, perl=TRUE),
+                col2 = gsub("=_","",col2, perl=TRUE),
+                col1 = gsub(":","_",col1, perl=TRUE),
+                col2 = gsub(":","_",col2, perl=TRUE),
+                col2 = gsub("_NODE.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_supercont.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_unitig_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_chromosome.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence001.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_map_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_1246.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("-assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_trimmed.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_NODE.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_supercont.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_unitig_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_chromosome.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence001.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_map_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_1246.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("-assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_trimmed.*(_GCF_.*)$","\\1",col1, perl=TRUE)) %>%
+  dplyr::select(-V1,-V2)%>%
+  unique()%>%
+  pivot_wider(., names_from="col2", values_from="V3") %>%
+  column_to_rownames("col1")
+ani_matrix_2[is.na(ani_matrix_2)] <- 74  
+ani_matrix_numeric_2 <- sapply(ani_matrix_2, as.double)
+rownames(ani_matrix_numeric_2) <- rownames(ani_matrix_2)
+
+
+# First Plot with small margins
+# par(mar = c(2, 2, 2, 2)) # Set the margin on all sides to 2
+# plot(1:10)
+# mtext("Small Margins", side = 3, line = 1, cex = 1.2)
+# mtext("par(mar = c(2, 2, 2, 2))", side = 3)
+#reordered_matrix <- reorder_mat(ani_matrix_numerix, ordered_labels)
+
+reordered_matrix_1 <- as.data.frame(ani_matrix_numeric_1) %>% rownames_to_column('GNames') %>%
+  dplyr::arrange(match(GNames , ordered_labels_1_Sub)) %>%
+  column_to_rownames("GNames") 
+reordered_matrix_both_1 <- reordered_matrix_1[,ordered_labels_1_Sub]
+reordered_matrix_mat_1 <- as.matrix(reordered_matrix_both_1)
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+my_palette_4<- c("#01256f","#b43ca4","#f79cee","#ffae00","#17955b","#83e0c1")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+colors_1 = c(seq(90,90.9,length=1),seq(91,91.9,length=1),seq(92,92.9,length=1),seq(93,93.9,length=1),seq(94,94.9,length=1),seq(95,95.9,length=1),seq(96,96.9,length=1),seq(97,97.9,length=1),seq(98,98.9,length=1),seq(99,100,length=1))
+my_palette_cust_1 <- colorRampPalette(c( "#CCCCFF", "#DFFF00","#FFBF00", "#FF7F50", "#DE3163","#f74a36","#ab311f","#641E16","#0a0302"))(n = 9)
+
+
+dend1 <- ReadDendrogram(textConnection(write.tree(treobj_reroot_1))) 
+
+#par(mar = c(20, 2, 1, 20))
+png("heatmap_Dec2022.JanDugMasArchan.png", res=300, width=30, height= 30,  units='in')
+h1<- heatmap.2( reordered_matrix_mat_1, 
+              dendrogram = c("both"),
+              trace="none",
+              density.info="none",
+              Rowv=dend1,
+              Colv=dend1,
+              key = TRUE,
+              col=my_palette_cust_1,
+              srtCol=45,
+              breaks=colors_1,
+              # key.par=list(mgp=c(1.5, 0.5, 0),
+              #           mar=c(2.5, 2.5, 1, 0)),
+              lhei=c(1, 5),
+              lwid=c(1,5),
+              # lmat=rbind(c(4,3),c(2,1)),
+              margins=c(25,30)
+              )
+#h1
+dev.off()
+
+
+
+
+
+reordered_matrix_2 <- as.data.frame(ani_matrix_numeric_2) %>% rownames_to_column('GNames') %>%
+  dplyr::arrange(match(GNames , ordered_labels_2_Sub)) %>%
+  column_to_rownames("GNames") 
+reordered_matrix_both_2 <- reordered_matrix_2[,ordered_labels_2_Sub]
+reordered_matrix_mat_2 <- as.matrix(reordered_matrix_both_2)
+
+dend_2 <- ReadDendrogram(textConnection(write.tree(treobj_reroot_2))) 
+
+#par(mar = c(20, 2, 1, 20))
+#Chromobacterium|Aquitalea|Iodobacter|Archangium
+png("heatmap_Dec2022.ChromoAquiIodoArchan.png", res=300, width=25, height= 25,  units='in')
+h2<- heatmap.2( reordered_matrix_mat_2, 
+              dendrogram = c("both"),
+              trace="none",
+              density.info="none",
+              Rowv=dend_2,
+              Colv=dend_2,
+              key = TRUE,
+              col=my_palette_cust_1,
+              srtCol=45,
+              breaks=colors_1,
+              # key.par=list(mgp=c(1.5, 0.5, 0),
+              #           mar=c(2.5, 2.5, 1, 0)),
+              lhei=c(1, 5),
+              lwid=c(1,5),
+              # lmat=rbind(c(4,3),c(2,1)),
+              margins=c(23,29)
+              )
+#h1
+dev.off()
+
+
+```
+
+# CHROMO_Arch
+```{r Chromo+Archangium}
+# For Chromobacterium:
+# Make sure our 2 strains are there: HSC-77S12 GCF_011601295.1, and HSC-31F16 GCF_011602385.1
+
+
+# Chromobacterium + Archangium
+tree1_removelist_1 <- grepl("Janthino|Aquitalea|Massilia|Duganella|Iodobacter",treeobj$tip.label, perl= TRUE)
+pruned.tree_1<-drop.tip(treeobj,treeobj$tip.label[tree1_removelist_1])
+
+
+# Reroot the trees
+treobj_reroot_1 <- ape::root(pruned.tree_1, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1")
+
+
+
+
+is_tip_1 <- treobj_reroot_1$edge[,2] <= length(treobj_reroot_1$tip.label)
+ordered_tips_1 <- treobj_reroot_1$edge[is_tip_1, 2]
+ordered_labels_1 <- treobj_reroot_1$tip.label[ordered_tips_1]
+ordered_labels_1_Sub <- gsub("ncbi-genomes-2022-01-24/","",ordered_labels_1, perl=TRUE)
+ordered_labels_1_Sub<- gsub(".fna$","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub("=_","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub(":","_",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_NODE.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_supercont.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_unitig_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_chromosome.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence001.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_map_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_1246.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+
+
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+ani_matrix_1_NOT <- as.data.frame(ani_table) %>% 
+  dplyr::filter( grepl("Janthino|Aquitalea|Massilia|Duganella|Iodobacter",V2, perl= TRUE))%>%
+  dplyr::filter( grepl("Janthino|Aquitalea|Massilia|Duganella|Iodobacter",V1, perl= TRUE))
+
+ani_matrix_1 <- as.data.frame(ani_table) %>% 
+  dplyr::filter( !grepl("Janthino|Aquitalea|Massilia|Duganella|Iodobacter",V2, perl= TRUE))%>%
+  dplyr::filter( !grepl("Janthino|Aquitalea|Massilia|Duganella|Iodobacter",V1, perl= TRUE))%>%
+  dplyr::mutate(col1 = gsub("ncbi-genomes-2022-01-24/","",V1, perl=TRUE),
+                col2 = gsub("ncbi-genomes-2022-01-24/","",V2, perl=TRUE),
+                col1 = gsub(".fna$","",col1, perl=TRUE),
+                col2 = gsub(".fna$","",col2, perl=TRUE),
+                col1 = gsub("=_","",col1, perl=TRUE),
+                col2 = gsub("=_","",col2, perl=TRUE),
+                col1 = gsub(":","_",col1, perl=TRUE),
+                col2 = gsub(":","_",col2, perl=TRUE),
+                col2 = gsub("_NODE.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_supercont.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_unitig_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_chromosome.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence001.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_map_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_1246.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("-assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_trimmed.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_NODE.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_supercont.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_unitig_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_chromosome.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence001.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_map_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_1246.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("-assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_trimmed.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col2, perl=TRUE),) %>%
+  dplyr::select(-V1,-V2)%>%
+  unique()%>%
+  pivot_wider(., names_from="col2", values_from="V3") %>%
+  column_to_rownames("col1")
+ani_matrix_1[is.na(ani_matrix_1)] <- 74  
+ani_matrix_numeric_1 <- sapply(ani_matrix_1, as.double)
+rownames(ani_matrix_numeric_1) <- rownames(ani_matrix_1)
+
+
+
+reordered_matrix_1 <- as.data.frame(ani_matrix_numeric_1) %>% rownames_to_column('GNames') %>%
+  dplyr::arrange(match(GNames , ordered_labels_1_Sub)) %>%
+  column_to_rownames("GNames") 
+reordered_matrix_both_1 <- reordered_matrix_1[,ordered_labels_1_Sub]
+reordered_matrix_mat_1 <- as.matrix(reordered_matrix_both_1)
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+my_palette_4<- c("#01256f","#b43ca4","#f79cee","#ffae00","#17955b","#83e0c1")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+colors_1 = c(seq(89,89.9,length=1),seq(90,90.9,length=1),seq(91,91.9,length=1),seq(92,92.9,length=1),seq(93,93.9,length=1),seq(94,94.9,length=1),seq(95,95.9,length=1),seq(96,96.9,length=1),seq(97,97.9,length=1),seq(98,98.9,length=1),seq(99,99.9,length=1),seq(100,100.1,length=1))
+my_palette_cust_1 <- colorRampPalette(c( "#FFFFFF","#CCCCFF", "#87CEEB","#DFFF00", "#FFBF00", "#FF7F50","#DE3163","#f74a36","#ab311f","#641E16","#0a0302"))(n = 11)
+
+
+
+
+dend1 <- ReadDendrogram(textConnection(write.tree(treobj_reroot_1))) 
+#Chromobacterium|Archangium
+#par(mar = c(20, 2, 1, 20))
+png("heatmap_Dec2022.ChromoArchan.png", res=600, width=20, height= 15,  units='in')
+h1<- heatmap.2( reordered_matrix_mat_1, 
+              dendrogram = c("both"),
+              trace="none",
+              density.info="none",
+              Rowv=dend1,
+              Colv=dend1,
+              cexRow = 0.2 + 1/log10(88),
+              cexCol  = 0.19 + 1/log10(88),
+              key = TRUE,
+              col=my_palette_cust_1,
+              srtCol=45,
+              breaks=colors_1,
+              # key.par=list(mgp=c(1.5, 0.5, 0),
+              #           mar=c(2.5, 2.5, 1, 0)),
+              lhei=c(1, 5),
+              lwid=c(1,5),
+              # lmat=rbind(c(4,3),c(2,1)),
+              margins=c(17,25)
+              )
+#h1
+dev.off()
+
+
+
+
+
+
+```
+
+# Aquitalea_Arch
+```{r Aquitalea+Archangium}
+# For Iodobacter:
+# make sure our strain is there: HSC-16F04 GCF_011601265.1
+# 
+
+
+
+tree1_removelist_1 <- grepl("Janthino|Chromobacterium|Massilia|Duganella|Iodobacter",treeobj$tip.label, perl= TRUE)
+pruned.tree_1<-drop.tip(treeobj,treeobj$tip.label[tree1_removelist_1])
+
+
+# Reroot the trees
+treobj_reroot_1 <- ape::root(pruned.tree_1, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1")
+
+
+
+
+is_tip_1 <- treobj_reroot_1$edge[,2] <= length(treobj_reroot_1$tip.label)
+ordered_tips_1 <- treobj_reroot_1$edge[is_tip_1, 2]
+ordered_labels_1 <- treobj_reroot_1$tip.label[ordered_tips_1]
+ordered_labels_1_Sub <- gsub("ncbi-genomes-2022-01-24/","",ordered_labels_1, perl=TRUE)
+ordered_labels_1_Sub<- gsub(".fna$","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub("=_","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub(":","_",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_NODE.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_supercont.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_unitig_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_chromosome.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence001.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_map_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_1246.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+
+
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+ani_matrix_1_NOT <- as.data.frame(ani_table) %>% 
+  dplyr::filter( grepl("Janthino|Chromobacterium|Massilia|Duganella|Iodobacter",V2, perl= TRUE))%>%
+  dplyr::filter( grepl("Janthino|Chromobacterium|Massilia|Duganella|Iodobacter",V1, perl= TRUE))
+
+ani_matrix_1 <- as.data.frame(ani_table) %>% 
+  dplyr::filter( !grepl("Janthino|Chromobacterium|Massilia|Duganella|Iodobacter",V2, perl= TRUE))%>%
+  dplyr::filter( !grepl("Janthino|Chromobacterium|Massilia|Duganella|Iodobacter",V1, perl= TRUE))%>%
+  dplyr::mutate(col1 = gsub("ncbi-genomes-2022-01-24/","",V1, perl=TRUE),
+                col2 = gsub("ncbi-genomes-2022-01-24/","",V2, perl=TRUE),
+                col1 = gsub(".fna$","",col1, perl=TRUE),
+                col2 = gsub(".fna$","",col2, perl=TRUE),
+                col1 = gsub("=_","",col1, perl=TRUE),
+                col2 = gsub("=_","",col2, perl=TRUE),
+                col1 = gsub(":","_",col1, perl=TRUE),
+                col2 = gsub(":","_",col2, perl=TRUE),
+                col2 = gsub("_NODE.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_supercont.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_unitig_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_chromosome.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence001.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_map_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_1246.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("-assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_trimmed.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_NODE.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_supercont.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_unitig_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_chromosome.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence001.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_map_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_1246.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("-assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_trimmed.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col2, perl=TRUE),) %>%
+  dplyr::select(-V1,-V2)%>%
+  unique()%>%
+  pivot_wider(., names_from="col2", values_from="V3") %>%
+  column_to_rownames("col1")
+ani_matrix_1[is.na(ani_matrix_1)] <- 74  
+ani_matrix_numeric_1 <- sapply(ani_matrix_1, as.double)
+rownames(ani_matrix_numeric_1) <- rownames(ani_matrix_1)
+
+
+# First Plot with small margins
+# par(mar = c(2, 2, 2, 2)) # Set the margin on all sides to 2
+# plot(1:10)
+# mtext("Small Margins", side = 3, line = 1, cex = 1.2)
+# mtext("par(mar = c(2, 2, 2, 2))", side = 3)
+#reordered_matrix <- reorder_mat(ani_matrix_numerix, ordered_labels)
+
+reordered_matrix_1 <- as.data.frame(ani_matrix_numeric_1) %>% rownames_to_column('GNames') %>%
+  dplyr::arrange(match(GNames , ordered_labels_1_Sub)) %>%
+  column_to_rownames("GNames") 
+reordered_matrix_both_1 <- reordered_matrix_1[,ordered_labels_1_Sub]
+reordered_matrix_mat_1 <- as.matrix(reordered_matrix_both_1)
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+my_palette_4<- c("#01256f","#b43ca4","#f79cee","#ffae00","#17955b","#83e0c1")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+colors_1 = c(seq(89,89.9,length=1),seq(90,90.9,length=1),seq(91,91.9,length=1),seq(92,92.9,length=1),seq(93,93.9,length=1),seq(94,94.9,length=1),seq(95,95.9,length=1),seq(96,96.9,length=1),seq(97,97.9,length=1),seq(98,98.9,length=1),seq(99,99.9,length=1),seq(100,100.1,length=1))
+my_palette_cust_1 <- colorRampPalette(c( "#FFFFFF","#CCCCFF", "#87CEEB","#DFFF00", "#FFBF00", "#FF7F50","#DE3163","#f74a36","#ab311f","#641E16","#0a0302"))(n = 11)
+
+
+
+
+dend1 <- ReadDendrogram(textConnection(write.tree(treobj_reroot_1))) 
+#Chromobacterium|Archangium
+#par(mar = c(20, 2, 1, 20))
+png("heatmap_Dec2022.AquitaleaArchan.png", res=600, width=15, height= 10,  units='in')
+h1<- heatmap.2( reordered_matrix_mat_1, 
+              dendrogram = c("both"),
+              trace="none",
+              density.info="none",
+              Rowv=dend1,
+              Colv=dend1,
+              cexRow = 0.98,
+              cexCol  = 0.94,
+              key = TRUE,
+              col=my_palette_cust_1,
+              srtCol=45,
+              breaks=colors_1,
+              # key.par=list(mgp=c(1.5, 0.5, 0),
+              #           mar=c(2.5, 2.5, 1, 0)),
+              lhei=c(1, 5),
+              lwid=c(1,5),
+              # lmat=rbind(c(4,3),c(2,1)),
+              margins=c(22,32)
+              )
+#h1
+dev.off()
+
+
+```
+# Iodobacter_Arch
+```{r Iodobacter+Archangium}
+# For Iodobacter:
+# make sure our strain is there: HSC-16F04 GCF_011601265.1
+# Add:
+# [Janthinobacterium]_sp_B9-8 GCF_000969645.2
+
+
+#Chromobacterium + Archangium
+# REMOVE the labels we don't want in tree 1
+# Total list: 
+# Janthino + Archangium
+# Chromobacterium + Archangium
+# Aquitalea + Archangium
+# Massilia + Archangium
+# Duganella + Archangium
+# Iodobacter + Archangium
+
+# Chromobacterium + Archangium
+#perl -ne 'print if /^(?!Bush)(Clinton|Reagan)/' textfile
+tree1_removelist_1 <- !grepl("Iodobacter|GCF_000969645|GCF_011601265|Archangium",treeobj$tip.label, perl= TRUE)
+pruned.tree_1<-drop.tip(treeobj,treeobj$tip.label[tree1_removelist_1])
+
+
+# Reroot the trees
+treobj_reroot_1 <- ape::root(pruned.tree_1, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1")
+
+
+
+
+is_tip_1 <- treobj_reroot_1$edge[,2] <= length(treobj_reroot_1$tip.label)
+ordered_tips_1 <- treobj_reroot_1$edge[is_tip_1, 2]
+ordered_labels_1 <- treobj_reroot_1$tip.label[ordered_tips_1]
+ordered_labels_1_Sub <- gsub("ncbi-genomes-2022-01-24/","",ordered_labels_1, perl=TRUE)
+ordered_labels_1_Sub<- gsub(".fna$","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub("=_","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub(":","_",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_NODE.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_supercont.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_unitig_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_chromosome.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence001.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_map_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_1246.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+
+
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+ani_matrix_1_NOT <- as.data.frame(ani_table) %>% 
+  dplyr::filter( !grepl("Iodobacter|GCF_000969645|GCF_011601265|Archangium",V2, perl= TRUE))%>%
+  dplyr::filter( !grepl("Iodobacter|GCF_000969645|GCF_011601265|Archangium",V1, perl= TRUE))
+
+ani_matrix_1 <- as.data.frame(ani_table) %>% 
+  dplyr::filter( grepl("Iodobacter|GCF_000969645|GCF_011601265|Archangium",V2, perl= TRUE))%>%
+  dplyr::filter( grepl("Iodobacter|GCF_000969645|GCF_011601265|Archangium",V1, perl= TRUE))%>%
+  dplyr::mutate(col1 = gsub("ncbi-genomes-2022-01-24/","",V1, perl=TRUE),
+                col2 = gsub("ncbi-genomes-2022-01-24/","",V2, perl=TRUE),
+                col1 = gsub(".fna$","",col1, perl=TRUE),
+                col2 = gsub(".fna$","",col2, perl=TRUE),
+                col1 = gsub("=_","",col1, perl=TRUE),
+                col2 = gsub("=_","",col2, perl=TRUE),
+                col1 = gsub(":","_",col1, perl=TRUE),
+                col2 = gsub(":","_",col2, perl=TRUE),
+                col2 = gsub("_NODE.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_supercont.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_unitig_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_chromosome.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence001.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_map_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_1246.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("-assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_trimmed.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_NODE.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_supercont.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_unitig_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_chromosome.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence001.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_map_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_1246.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("-assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_trimmed.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col2, perl=TRUE),) %>%
+  dplyr::select(-V1,-V2)%>%
+  unique()%>%
+  pivot_wider(., names_from="col2", values_from="V3") %>%
+  column_to_rownames("col1")
+ani_matrix_1[is.na(ani_matrix_1)] <- 74  
+ani_matrix_numeric_1 <- sapply(ani_matrix_1, as.double)
+rownames(ani_matrix_numeric_1) <- rownames(ani_matrix_1)
+
+
+# First Plot with small margins
+# par(mar = c(2, 2, 2, 2)) # Set the margin on all sides to 2
+# plot(1:10)
+# mtext("Small Margins", side = 3, line = 1, cex = 1.2)
+# mtext("par(mar = c(2, 2, 2, 2))", side = 3)
+#reordered_matrix <- reorder_mat(ani_matrix_numerix, ordered_labels)
+
+reordered_matrix_1 <- as.data.frame(ani_matrix_numeric_1) %>% rownames_to_column('GNames') %>%
+  dplyr::arrange(match(GNames , ordered_labels_1_Sub)) %>%
+  column_to_rownames("GNames") 
+reordered_matrix_both_1 <- reordered_matrix_1[,ordered_labels_1_Sub]
+reordered_matrix_mat_1 <- as.matrix(reordered_matrix_both_1)
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+my_palette_4<- c("#01256f","#b43ca4","#f79cee","#ffae00","#17955b","#83e0c1")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+colors_1 = c(seq(89,89.9,length=1),seq(90,90.9,length=1),seq(91,91.9,length=1),seq(92,92.9,length=1),seq(93,93.9,length=1),seq(94,94.9,length=1),seq(95,95.9,length=1),seq(96,96.9,length=1),seq(97,97.9,length=1),seq(98,98.9,length=1),seq(99,99.9,length=1),seq(100,100.1,length=1))
+my_palette_cust_1 <- colorRampPalette(c( "#FFFFFF","#CCCCFF", "#87CEEB","#DFFF00", "#FFBF00", "#FF7F50","#DE3163","#f74a36","#ab311f","#641E16","#0a0302"))(n = 11)
+
+
+
+dend1 <- ReadDendrogram(textConnection(write.tree(treobj_reroot_1))) 
+#Chromobacterium|Archangium
+#par(mar = c(20, 2, 1, 20))
+png("heatmap_Dec2022.IodobacterArchan.png", res=600, width=15, height=10,  units='in')
+h1<- heatmap.2( reordered_matrix_mat_1, 
+              dendrogram = c("both"),
+              trace="none",
+              density.info="none",
+              Rowv=dend1,
+              Colv=dend1,
+              cexRow = 1.5,
+              cexCol  = 0.19 + 1/log10(88),
+              key = TRUE,
+              col=my_palette_cust_1,
+              srtCol=45,
+              breaks=colors_1,
+              # key.par=list(mgp=c(1.5, 0.5, 0),
+              #           mar=c(2.5, 2.5, 1, 0)),
+              lhei=c(1, 5),
+              lwid=c(1,5),
+              # lmat=rbind(c(4,3),c(2,1)),
+              margins=c(16,45)
+              )
+#h1
+dev.off()
+
+
+```
+# Duganella_Arch
+```{r Duganella+Archangium}
+# For Duganella:
+# make sure our strain is there: HSC-15S17 GCF_019166075.1
+# Add:
+# [Janthinobacterium]_sp__HH01 GCF_000335815.1
+# [Janthinobacterium]_sp_BJB412 GCF_002735605.1
+# NOT [Duganella]_sp_GN2-R2 GCF_012849555.1
+
+
+#Chromobacterium + Archangium
+# REMOVE the labels we don't want in tree 1
+# Total list: 
+# Janthino + Archangium
+# Chromobacterium + Archangium
+# Aquitalea + Archangium
+# Massilia + Archangium
+# Duganella + Archangium
+# Iodobacter + Archangium
+
+# Duganella + Archangium
+tree1_removelist_1 <- !grepl("Duganella|GCF_019166075|GCF_000335815|GCF_002735605|Archangium",treeobj$tip.label, perl= TRUE)
+pruned.tree_tmp<-drop.tip(treeobj,treeobj$tip.label[tree1_removelist_1])
+
+tree1_removelist_2 <- grepl("GCF_012849555.1",pruned.tree_tmp$tip.label, perl= TRUE)
+pruned.tree_1<-drop.tip(pruned.tree_tmp,pruned.tree_tmp$tip.label[tree1_removelist_2])
+
+# Reroot the trees
+treobj_reroot_1 <- ape::root(pruned.tree_1, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1")
+
+
+
+
+is_tip_1 <- treobj_reroot_1$edge[,2] <= length(treobj_reroot_1$tip.label)
+ordered_tips_1 <- treobj_reroot_1$edge[is_tip_1, 2]
+ordered_labels_1 <- treobj_reroot_1$tip.label[ordered_tips_1]
+ordered_labels_1_Sub <- gsub("ncbi-genomes-2022-01-24/","",ordered_labels_1, perl=TRUE)
+ordered_labels_1_Sub<- gsub(".fna$","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub("=_","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub(":","_",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_NODE.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_supercont.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_unitig_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_chromosome.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence001.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_map_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_1246.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+
+
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+
+ani_matrix_1 <- as.data.frame(ani_table) %>% 
+  dplyr::filter( grepl("Duganella|GCF_019166075|GCF_000335815|GCF_002735605|Archangium",V2, perl= TRUE))%>%
+  dplyr::filter( !grepl("GCF_012849555",V2, perl= TRUE))%>%
+  dplyr::filter( grepl("Duganella|GCF_019166075|GCF_000335815|GCF_002735605|Archangium",V1, perl= TRUE))%>%
+  dplyr::filter( !grepl("GCF_012849555",V1, perl= TRUE))%>%
+  dplyr::mutate(col1 = gsub("ncbi-genomes-2022-01-24/","",V1, perl=TRUE),
+                col2 = gsub("ncbi-genomes-2022-01-24/","",V2, perl=TRUE),
+                col1 = gsub(".fna$","",col1, perl=TRUE),
+                col2 = gsub(".fna$","",col2, perl=TRUE),
+                col1 = gsub("=_","",col1, perl=TRUE),
+                col2 = gsub("=_","",col2, perl=TRUE),
+                col1 = gsub(":","_",col1, perl=TRUE),
+                col2 = gsub(":","_",col2, perl=TRUE),
+                col2 = gsub("_NODE.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_supercont.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_unitig_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_chromosome.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence001.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_map_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_1246.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("-assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_trimmed.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_NODE.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_supercont.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_unitig_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_chromosome.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence001.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_map_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_1246.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("-assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_trimmed.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col2, perl=TRUE),) %>%
+  dplyr::select(-V1,-V2)%>%
+  unique()%>%
+  pivot_wider(., names_from="col2", values_from="V3") %>%
+  column_to_rownames("col1")
+ani_matrix_1[is.na(ani_matrix_1)] <- 74  
+ani_matrix_numeric_1 <- sapply(ani_matrix_1, as.double)
+rownames(ani_matrix_numeric_1) <- rownames(ani_matrix_1)
+
+
+# First Plot with small margins
+# par(mar = c(2, 2, 2, 2)) # Set the margin on all sides to 2
+# plot(1:10)
+# mtext("Small Margins", side = 3, line = 1, cex = 1.2)
+# mtext("par(mar = c(2, 2, 2, 2))", side = 3)
+#reordered_matrix <- reorder_mat(ani_matrix_numerix, ordered_labels)
+
+reordered_matrix_1 <- as.data.frame(ani_matrix_numeric_1) %>% rownames_to_column('GNames') %>%
+  dplyr::arrange(match(GNames , ordered_labels_1_Sub)) %>%
+  column_to_rownames("GNames") 
+reordered_matrix_both_1 <- reordered_matrix_1[,ordered_labels_1_Sub]
+reordered_matrix_mat_1 <- as.matrix(reordered_matrix_both_1)
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+my_palette_4<- c("#01256f","#b43ca4","#f79cee","#ffae00","#17955b","#83e0c1")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+colors_1 = c(seq(89,89.9,length=1),seq(90,90.9,length=1),seq(91,91.9,length=1),seq(92,92.9,length=1),seq(93,93.9,length=1),seq(94,94.9,length=1),seq(95,95.9,length=1),seq(96,96.9,length=1),seq(97,97.9,length=1),seq(98,98.9,length=1),seq(99,99.9,length=1),seq(100,100.1,length=1))
+my_palette_cust_1 <- colorRampPalette(c( "#FFFFFF","#CCCCFF", "#87CEEB","#DFFF00", "#FFBF00", "#FF7F50","#DE3163","#f74a36","#ab311f","#641E16","#0a0302"))(n = 11)
+
+
+
+dend1 <- ReadDendrogram(textConnection(write.tree(treobj_reroot_1))) 
+#Chromobacterium|Archangium
+#par(mar = c(20, 2, 1, 20))
+png("heatmap_Dec2022.DuganellaArchan.png", res=600, width=20, height= 15,  units='in')
+h1<- heatmap.2( reordered_matrix_mat_1, 
+              dendrogram = c("both"),
+              trace="none",
+              density.info="none",
+              Rowv=dend1,
+              Colv=dend1,
+              cexRow = 1,
+              cexCol  = 1,
+              key = TRUE,
+              col=my_palette_cust_1,
+              srtCol=45,
+              breaks=colors_1,
+              # key.par=list(mgp=c(1.5, 0.5, 0),
+              #           mar=c(2.5, 2.5, 1, 0)),
+              lhei=c(1, 5),
+              lwid=c(1,5),
+              # lmat=rbind(c(4,3),c(2,1)),
+              margins=c(20,28)
+              )
+#h1
+dev.off()
+
+
+```
+
+# Massilia_Arch
+```{r Massilia+Archangium}
+# For Massilia:
+# Make sure our strain is there: HSC-2F05 GCF_020208145.1
+# add the following:
+# [Duganella]_sp_GN2-R2 GCF_012849555.1 (because it’s labeled as Duganella, but it falls within Massilia)
+# Massilia [Janthinobacterium]_sp__CG23_2 GCF_002900945.1
+# Massilia [Janthinobacterium]_sp__CG23_25 GCF_001485665.1
+
+
+#Chromobacterium + Archangium
+# REMOVE the labels we don't want in tree 1
+# Total list: 
+# Janthino + Archangium
+# Chromobacterium + Archangium
+# Aquitalea + Archangium
+# Massilia + Archangium
+# Duganella + Archangium
+# Iodobacter + Archangium
+
+# Duganella + Archangium
+tree1_removelist_1 <- !grepl("Massilia|GCF_012849555|GCF_002900945|GCF_001485665|Archangium",treeobj$tip.label, perl= TRUE)
+pruned.tree_tmp<-drop.tip(treeobj,treeobj$tip.label[tree1_removelist_1])
+
+# tree1_removelist_2 <- grepl("GCF_012849555.1",pruned.tree_tmp$tip.label, perl= TRUE)
+# pruned.tree_1<-drop.tip(pruned.tree_tmp,pruned.tree_tmp$tip.label[tree1_removelist_2])
+
+# Reroot the trees
+treobj_reroot_1 <- ape::root(pruned.tree_tmp, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1")
+
+
+
+
+is_tip_1 <- treobj_reroot_1$edge[,2] <= length(treobj_reroot_1$tip.label)
+ordered_tips_1 <- treobj_reroot_1$edge[is_tip_1, 2]
+ordered_labels_1 <- treobj_reroot_1$tip.label[ordered_tips_1]
+ordered_labels_1_Sub <- gsub("ncbi-genomes-2022-01-24/","",ordered_labels_1, perl=TRUE)
+ordered_labels_1_Sub<- gsub(".fna$","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub("=_","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub(":","_",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_NODE.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_supercont.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_unitig_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_chromosome.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence001.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_map_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_1246.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+
+
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+
+ani_matrix_1 <- as.data.frame(ani_table) %>% 
+  dplyr::filter( grepl("Massilia|GCF_012849555|GCF_002900945|GCF_001485665|Archangium",V2, perl= TRUE))%>%
+  #dplyr::filter( !grepl("GCF_012849555",V2, perl= TRUE))%>%
+  dplyr::filter( grepl("Massilia|GCF_012849555|GCF_002900945|GCF_001485665|Archangium",V1, perl= TRUE))%>%
+  #dplyr::filter( !grepl("GCF_012849555",V1, perl= TRUE))%>%
+  dplyr::mutate(col1 = gsub("ncbi-genomes-2022-01-24/","",V1, perl=TRUE),
+                col2 = gsub("ncbi-genomes-2022-01-24/","",V2, perl=TRUE),
+                col1 = gsub(".fna$","",col1, perl=TRUE),
+                col2 = gsub(".fna$","",col2, perl=TRUE),
+                col1 = gsub("=_","",col1, perl=TRUE),
+                col2 = gsub("=_","",col2, perl=TRUE),
+                col1 = gsub(":","_",col1, perl=TRUE),
+                col2 = gsub(":","_",col2, perl=TRUE),
+                col2 = gsub("_NODE.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_supercont.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_unitig_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_chromosome.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence001.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_map_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_1246.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("-assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_trimmed.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_NODE.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_supercont.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_unitig_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_chromosome.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence001.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_map_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_1246.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("-assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_trimmed.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col2, perl=TRUE),) %>%
+  dplyr::select(-V1,-V2)%>%
+  unique()%>%
+  pivot_wider(., names_from="col2", values_from="V3") %>%
+  column_to_rownames("col1")
+ani_matrix_1[is.na(ani_matrix_1)] <- 74  
+ani_matrix_numeric_1 <- sapply(ani_matrix_1, as.double)
+rownames(ani_matrix_numeric_1) <- rownames(ani_matrix_1)
+
+
+# First Plot with small margins
+# par(mar = c(2, 2, 2, 2)) # Set the margin on all sides to 2
+# plot(1:10)
+# mtext("Small Margins", side = 3, line = 1, cex = 1.2)
+# mtext("par(mar = c(2, 2, 2, 2))", side = 3)
+#reordered_matrix <- reorder_mat(ani_matrix_numerix, ordered_labels)
+
+reordered_matrix_1 <- as.data.frame(ani_matrix_numeric_1) %>% rownames_to_column('GNames') %>%
+  dplyr::arrange(match(GNames , ordered_labels_1_Sub)) %>%
+  column_to_rownames("GNames") 
+reordered_matrix_both_1 <- reordered_matrix_1[,ordered_labels_1_Sub]
+reordered_matrix_mat_1 <- as.matrix(reordered_matrix_both_1)
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+my_palette_4<- c("#01256f","#b43ca4","#f79cee","#ffae00","#17955b","#83e0c1")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+colors_1 = c(seq(89,89.9,length=1),seq(90,90.9,length=1),seq(91,91.9,length=1),seq(92,92.9,length=1),seq(93,93.9,length=1),seq(94,94.9,length=1),seq(95,95.9,length=1),seq(96,96.9,length=1),seq(97,97.9,length=1),seq(98,98.9,length=1),seq(99,99.9,length=1),seq(100,100.1,length=1))
+my_palette_cust_1 <- colorRampPalette(c( "#FFFFFF","#CCCCFF", "#87CEEB","#DFFF00", "#FFBF00", "#FF7F50","#DE3163","#f74a36","#ab311f","#641E16","#0a0302"))(n = 11)
+
+
+dend1 <- ReadDendrogram(textConnection(write.tree(treobj_reroot_1))) 
+#Chromobacterium|Archangium
+#par(mar = c(20, 2, 1, 20))
+png("heatmap_Dec2022.MassiliaArchan.png", res=600, width=25, height= 18,  units='in')
+h1<- heatmap.2( reordered_matrix_mat_1, 
+              dendrogram = c("both"),
+              trace="none",
+              density.info="none",
+              Rowv=dend1,
+              Colv=dend1,
+              cexRow = 0.9,
+              cexCol  = 0.87,
+              key = TRUE,
+              col=my_palette_cust_1,
+              srtCol=45,
+              breaks=colors_1,
+              # key.par=list(mgp=c(1.5, 0.5, 0),
+              #           mar=c(2.5, 2.5, 1, 0)),
+              lhei=c(1, 5),
+              lwid=c(1,5),
+              # lmat=rbind(c(4,3),c(2,1)),
+              margins=c(21,33)
+              )
+#h1
+dev.off()
+
+
+```
+
+
+# Janthinobacterium_Arch
+```{r Janthinobacterium+Archangium}
+#  Janthinobacterium:
+# Make sure our strains are there: UCD_MED1 GCF_006152155.1, HSC-65S10 GCF_011601275.1, HSC-3S05 GCF_020208155.1
+# eliminate the following because these genomes are mislabeled:
+# [Janthinobacterium]_sp__HH01 GCF_000335815.1 (will be in Duganella)
+# [Janthinobacterium]_sp_BJB412 GCF_002735605.1 (will be in Duganella)
+# [Janthinobacterium]_sp_B9-8 GCF_000969645.2 (will be in Iodobacter)[Janthinobacterium]_sp__CG23_2 GCF_002900945.1 (will be in Massilia)
+# [Janthinobacterium]_sp__CG23_25 GCF_001485665.1 (will be in Massilia)
+
+#Chromobacterium + Archangium
+# REMOVE the labels we don't want in tree 1
+# Total list: 
+# Janthino + Archangium
+# Chromobacterium + Archangium
+# Aquitalea + Archangium
+# Massilia + Archangium
+# Duganella + Archangium
+# Iodobacter + Archangium
+
+# Duganella + Archangium
+tree1_removelist_1 <- !grepl("Janthinobacterium|GCF_011601275|GCF_006152155|GCF_020208155|Archangium",treeobj$tip.label, perl= TRUE)
+pruned.tree_tmp<-drop.tip(treeobj,treeobj$tip.label[tree1_removelist_1])
+
+tree1_removelist_2 <- grepl("GCF_000335815|GCF_002735605|GCF_000969645|GCF_001485665",pruned.tree_tmp$tip.label, perl= TRUE)
+pruned.tree_1<-drop.tip(pruned.tree_tmp,pruned.tree_tmp$tip.label[tree1_removelist_2])
+
+# Reroot the trees
+treobj_reroot_1 <- ape::root(pruned.tree_1, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1")
+
+
+
+
+is_tip_1 <- treobj_reroot_1$edge[,2] <= length(treobj_reroot_1$tip.label)
+ordered_tips_1 <- treobj_reroot_1$edge[is_tip_1, 2]
+ordered_labels_1 <- treobj_reroot_1$tip.label[ordered_tips_1]
+ordered_labels_1_Sub <- gsub("ncbi-genomes-2022-01-24/","",ordered_labels_1, perl=TRUE)
+ordered_labels_1_Sub<- gsub(".fna$","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub("=_","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub(":","_",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_NODE.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_supercont.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_unitig_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_chromosome.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence001.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_map_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_1246.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_strain_NBRC_102515.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+ani_matrix_1 <- as.data.frame(ani_table) %>% 
+  dplyr::filter( grepl("Janthinobacterium|GCF_011601275|GCF_006152155|GCF_020208155|Archangium",V2, perl= TRUE))%>%
+  dplyr::filter( !grepl("GCF_000335815|GCF_002735605|GCF_000969645|GCF_001485665",V2, perl= TRUE))%>%
+  dplyr::filter( grepl("Janthinobacterium|GCF_011601275|GCF_006152155|GCF_020208155|Archangium",V1, perl= TRUE))%>%
+  dplyr::filter( !grepl("GCF_000335815|GCF_002735605|GCF_000969645|GCF_001485665",V1, perl= TRUE))%>%
+  dplyr::mutate(col1 = gsub("ncbi-genomes-2022-01-24/","",V1, perl=TRUE),
+                col2 = gsub("ncbi-genomes-2022-01-24/","",V2, perl=TRUE),
+                col1 = gsub(".fna$","",col1, perl=TRUE),
+                col2 = gsub(".fna$","",col2, perl=TRUE),
+                col1 = gsub("=_","",col1, perl=TRUE),
+                col2 = gsub("=_","",col2, perl=TRUE),
+                col1 = gsub(":","_",col1, perl=TRUE),
+                col2 = gsub(":","_",col2, perl=TRUE),
+                col2 = gsub("_NODE.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_supercont.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_unitig_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_chromosome.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence001.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_scaffold.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_sequence.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_map_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_Contig.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_1246.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("-assembly.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col2 = gsub("_trimmed.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_NODE.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_supercont.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_unitig_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly_with.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_chromosome.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence001.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_scaffold.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_sequence.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_map_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_Contig.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_1246.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("-assembly.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_trimmed.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col1 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",col2, perl=TRUE),
+                col1 = gsub("_strain_NBRC_102515.*(_GCF_.*)$","\\1",col1, perl=TRUE),
+                col2 = gsub("_strain_NBRC_102515.*(_GCF_.*)$","\\1",col2, perl=TRUE),) %>%
+  dplyr::select(-V1,-V2)%>%
+  unique()%>%
+  pivot_wider(., names_from="col2", values_from="V3") %>%
+  column_to_rownames("col1")
+ani_matrix_1[is.na(ani_matrix_1)] <- 74  
+ani_matrix_numeric_1 <- sapply(ani_matrix_1, as.double)
+rownames(ani_matrix_numeric_1) <- rownames(ani_matrix_1)
+
+
+# First Plot with small margins
+# par(mar = c(2, 2, 2, 2)) # Set the margin on all sides to 2
+# plot(1:10)
+# mtext("Small Margins", side = 3, line = 1, cex = 1.2)
+# mtext("par(mar = c(2, 2, 2, 2))", side = 3)
+#reordered_matrix <- reorder_mat(ani_matrix_numerix, ordered_labels)
+
+reordered_matrix_1 <- as.data.frame(ani_matrix_numeric_1) %>% rownames_to_column('GNames') %>%
+  dplyr::arrange(match(GNames , ordered_labels_1_Sub)) %>%
+  column_to_rownames("GNames") 
+reordered_matrix_both_1 <- reordered_matrix_1[,ordered_labels_1_Sub]
+reordered_matrix_mat_1 <- as.matrix(reordered_matrix_both_1)
+
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+my_palette_4<- c("#01256f","#b43ca4","#f79cee","#ffae00","#17955b","#83e0c1")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+colors_1 = c(seq(89,89.9,length=1),seq(90,90.9,length=1),seq(91,91.9,length=1),seq(92,92.9,length=1),seq(93,93.9,length=1),seq(94,94.9,length=1),seq(95,95.9,length=1),seq(96,96.9,length=1),seq(97,97.9,length=1),seq(98,98.9,length=1),seq(99,99.9,length=1),seq(100,100.1,length=1))
+my_palette_cust_1 <- colorRampPalette(c( "#FFFFFF","#CCCCFF", "#87CEEB","#DFFF00", "#FFBF00", "#FF7F50","#DE3163","#f74a36","#ab311f","#641E16","#0a0302"))(n = 11)
+
+
+dend1 <- ReadDendrogram(textConnection(write.tree(treobj_reroot_1))) 
+#Chromobacterium|Archangium
+#par(mar = c(20, 2, 1, 20))
+png("heatmap_Dec2022.JanthinoArchan.png", res=600, width=26, height= 20,  units='in')
+h1<- heatmap.2( reordered_matrix_mat_1, 
+              dendrogram = c("both"),
+              trace="none",
+              density.info="none",
+              Rowv=dend1,
+              Colv=dend1,
+              cexRow = 1,
+              cexCol  = 0.95,
+              key = TRUE,
+              col=my_palette_cust_1,
+              srtCol=45,
+              breaks=colors_1,
+              # key.par=list(mgp=c(1.5, 0.5, 0),
+              #           mar=c(2.5, 2.5, 1, 0)),
+              lhei=c(1, 5),
+              lwid=c(1,5),
+              # lmat=rbind(c(4,3),c(2,1)),
+              margins=c(25,33)
+              )
+#h1
+dev.off()
+
+
+```
+
+
+
+
+# Jancino only
+```{r include=FALSE}
+
+#treeobj_janc<- ape::read.tree(file="janthinobacterium_genome_Tree_march_23_2021.tre") 
+#treeobj_janc<- ape::read.tree(file="Janthino_genome_Tree_march_24_2021.tree") 
+#treeobj_janc<- ape::read.tree(file="Janthino_plus_genome_Tree_march_22_2021.tree") 
+treeobj_janc<- ape::read.tree(file="RAxML_bipartitionsBranchLabels.New9Gs.redo.April12_2022.tree")
+#treeobj_janc<- ape::read.tree(file="RAxML_bipartitionsBranchLabels.New9Gs.redo.March2022.TEST.tree")
+#treeobj_janc<- ape::read.tree(file="Final_FINAL_4122_RAxML_bipartitionsBranchLabels.New9Gs.redo.March2022.nex")
+
+# Don't need to reroot if Marina already rooted.
+#treobj_reroot <- ape::root(treeobj, outgroup="1-GCF_001399755.1_Thiohalorhabdus_denitrificans")
+
+# Alternatively to load from existing environment 
+#Tree$node.label <- NULL # Need to remove node labels
+dend1 <- ReadDendrogram(textConnection(write.tree(treeobj_janc))) 
+is_tip <- treeobj_janc$edge[,2] <= length(treeobj_janc$tip.label)
+ordered_tips <- treeobj_janc$edge[is_tip, 2]
+ordered_labels <- read.table("ordered_tree_labels_april12.txt", header=FALSE) %>%
+ data.frame() %>%
+ mutate(columnList = as.character(V1))
+#ordered_labels <- treeobj_janc$tip.label[ordered_tips]
+
+
+
+
+
+#my_distance_matrix <- makeFastANIDistMatrix(f="fastANI_marina_march2021.renamed.txt", keep_asym=FALSE)
+
+ani_table <- read.delim(file = "fastANI_April22.tsv", header = FALSE, sep = "\t", stringsAsFactors = FALSE)[, 1 : 3]
+ani_matrix <- as.data.frame(ani_table) %>% 
+  dplyr::mutate(col1 = gsub("ncbi-genomes-2022-01-24/","",V1, perl=TRUE),
+                col2 = gsub("ncbi-genomes-2022-01-24/","",V2, perl=TRUE),
+                col1 = gsub(".fna$","",col1, perl=TRUE),
+                col2 = gsub(".fna$","",col2, perl=TRUE),
+                col1 = gsub("=_","",col1, perl=TRUE),
+                col2 = gsub("=_","",col2, perl=TRUE),
+                col1 = gsub(":","_",col1, perl=TRUE),
+                col2 = gsub(":","_",col2, perl=TRUE)) %>%
+  select(-V2,-V1)%>%
+  dplyr::filter(., col1 %in% ordered_labels$columnList & col2 %in% ordered_labels$columnList ) %>%
+  pivot_wider(., names_from="col2", values_from="V3") %>%
+  column_to_rownames("col1")
+ani_matrix[is.na(ani_matrix)] <- 74  # This is to set the no matches to the lowest color and not NA
+ani_matrix_numeric <- sapply(ani_matrix, as.double)
+rownames(ani_matrix_numeric) <- rownames(ani_matrix)
+
+#ordered_labels[!(ordered_labels %in% rownames(ani_matrix_numeric))]
+#rownames(ani_matrix_numeric)[!(rownames(ani_matrix_numeric) %in% ordered_labels)]
+
+my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
+my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
+my_palette_4<- c("#01256f","#b43ca4","#f79cee","#ffae00","#17955b","#83e0c1")
+#png("heatmap_test1.png", res=300, width=35, height= 15, units = 'in')
+#pdf("heatmap_test1.pdf")
+
+
+
+# First Plot with small margins
+# par(mar = c(2, 2, 2, 2)) # Set the margin on all sides to 2
+# plot(1:10)
+# mtext("Small Margins", side = 3, line = 1, cex = 1.2)
+# mtext("par(mar = c(2, 2, 2, 2))", side = 3)
+#reordered_matrix <- reorder_mat(ani_matrix_numerix, ordered_labels)
+
+reordered_matrix <- as.data.frame(ani_matrix_numeric) %>% rownames_to_column('GNames') %>%
+  dplyr::arrange(match(GNames , ordered_labels$columnList)) %>%
+  column_to_rownames("GNames") 
+
+ordLabs <- ordered_labels$columnList
+
+reordered_matrix_both <- reordered_matrix[,ordLabs]
+reordered_matrix_mat <- as.matrix(reordered_matrix_both)
+
+
+
+# Need to have 1 more break than colors.
+#colors = c(seq(-3,-2,length=100),seq(-2,0.5,length=100),seq(0.5,6,length=100))
+#my_palette <- colorRampPalette(c("red", "black", "green"))(n = 299)
+
+
+colors = c(seq(74,79.9,length=1),seq(80,89.9,length=1),seq(90,90.9,length=1),seq(91,91.9,length=1),seq(92,92.9,length=1),seq(93,93.9,length=1),seq(94,94.9,length=1),seq(95,95.9,length=1),seq(96,96.9,length=1),seq(97,97.9,length=1),seq(98,98.9,length=1),seq(99,100,length=1))
+my_palette_cust <- colorRampPalette(c( "#40E0D0","#6495ED", "#CCCCFF", "#DFFF00","#FFBF00", "#FF7F50", "#DE3163","#f74a36","#ab311f","#661e12","#641E16","#0a0302"))(n = 11)
+
+reordered_matrix_mat.rev <- as.matrix(rev(data.frame(reordered_matrix_mat)))
+
+# colnames.mat <- colnames(reordered_matrix_mat)
+# colnames.mat.2 <- gsub("_NODE.*","",colnames.mat, perl=TRUE)
+# colnames.mat.2 <- gsub("_Scaffold.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_contig.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_supercont.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_unitig_.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_Assembly_with.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_chromosome.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_sequence001.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_scaffold.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_Assembly.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_sequence.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_map_.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_Contig.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_1246.*","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("-assembly.*$","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_trimmed.*$","",colnames.mat.2, perl=TRUE)
+# colnames.mat.2 <- gsub("_GCF_.*","",colnames.mat.2, perl=TRUE)
+# colnames(reordered_matrix_mat)<-colnames.mat.2
+
+
+rownames.mat <- rownames(reordered_matrix_mat)
+rownames.mat.2 <- gsub("_NODE.*(_GCF_.*)$","\\1",rownames.mat, perl=TRUE)
+rownames.mat.2 <- gsub("_Scaffold.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_contig.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_supercont.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_unitig_.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_chromosome.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_sequence001.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_scaffold.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_Assembly.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_sequence.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_map_.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_Contig.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_1246.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("-assembly.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+rownames.mat.2 <- gsub("_trimmed.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+#rownames.mat.2 <- gsub("-assembly.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+#rownames.mat.2 <- gsub("-assembly.*(_GCF_.*)$","\\1",rownames.mat.2, perl=TRUE)
+#rownames.mat.2 <- gsub("_GCF_.*","",rownames.mat.2, perl=TRUE)
+rownames(reordered_matrix_mat)<-rownames.mat.2
+
+
+colnames.mat <- colnames(reordered_matrix_mat)
+colnames.mat.2 <- gsub("_NODE.*(_GCF_.*)$","\\1",colnames.mat, perl=TRUE)
+colnames.mat.2 <- gsub("_Scaffold.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_contig.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_supercont.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_unitig_.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_chromosome.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_sequence001.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_scaffold.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_Assembly.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_sequence.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_map_.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_Contig.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_1246.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("-assembly.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+colnames.mat.2 <- gsub("_trimmed.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+#colnames.mat.2 <- gsub("-assembly.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+#colnames.mat.2 <- gsub("-assembly.*(_GCF_.*)$","\\1",colnames.mat.2, perl=TRUE)
+#colnames.mat.2 <- gsub("_GCF_.*","",colnames.mat.2, perl=TRUE)
+colnames(reordered_matrix_mat)<-colnames.mat.2
+
+#par(mar = c(20, 2, 1, 25))
+par(mar=c(7,4,4,2)+0.1)
+png("heatmap_April2022.3.png", res=300, width=10, height= 10,  units='in')
+h1<- heatmap.2( reordered_matrix_mat, 
+              dendrogram = c("row"),
+              trace="none",
+              density.info="none",
+              Rowv=dend1,
+              Colv=dend1,
+              key = TRUE,
+              col=my_palette_cust,
+              breaks=colors,
+              srtCol=90,
+              # key.par=list(mgp=c(1.5, 0.5, 0),
+              #           mar=c(2.5, 2.5, 1, 0)),
+              lhei=c(1,4 ),
+              lwid=c(4,4),
+              # lmat=rbind(c(4,3),c(2,1)),
+              #margins=c(20,25),
+              #rowsep = c(2,7,13,19,21,22,25,36,50,65,73,79,80,84,89,90,99),
+              #colsep = c(8,17,18,23,27,28,34,42,57,71,82,85,86,88,94,100,105)
+              )
+h1
+dev.off()
+
+
+
+
+```
+
+```{r makeFastANIDistMatrix}
+
+# Copyright 2020 Yu Wan <wanyuac@126.com>
+# Licensed under the Apache License, Version 3.0
+# Publication: 6 April 2020
+
+makeFastANIDistMatrix <- function(f, keep_asym = FALSE, frac = FALSE) {
+    # Initiation
+    ani <- read.delim(file = f, header = FALSE, sep = "\t", stringsAsFactors = FALSE)[, 1 : 3]
+    names(ani) <- c("Query", "Reference", "ANI")
+    ids <- sort(union(ani$Query, ani$Reference), decreasing = FALSE)
+    ani$D <- ani$ANI  # Calculate distances from ANIs
+    ani <- ani[, -3]  # Remove the column "ANI"
+
+    if (frac) {
+        ani$D <- ani$D  # Convert percentages to decimal fractions
+        precision <- 6  # Number of decimals to keep
+    } else {
+        precision <- 4  # The same as FastANI
+    }
+
+    n <- length(ids)
+    M <- matrix(data = NA, nrow = n, ncol = n, dimnames = list(ids, ids))
+    diag(M) <- 100
+
+    # Stage one: copy values from the data frame to matrix M
+    for (i in 1 : nrow(ani)) {
+        rw <- ani[i, ]  # Extract one row from the data frame to increase the speed
+        q <- rw$Query
+        r <- rw$Reference
+        if (r != q) {
+            M[q, r] <- rw$D
+        }
+    }
+
+    # Stage two: convert M into a symmetric matrix by taking the mean distance between every pair of genomes
+    # This is the same method that FastANI uses for generating the PHYLIP-formatted lower triangular matrix.
+    # See https://github.com/ParBLiSS/FastANI/issues/36
+    if (keep_asym) {
+        M_asym <- M
+    }
+
+    for (i in 1 : (n - 1)) {
+        for (j in (i + 1) : n) {
+            val_up <- M[i, j]  # The value in the upper triangle
+            val_lo <- M[j, i]  # The value in the lower triangle
+            v <- round((val_up + val_lo) / 2, digits = precision)  # The same precision as FastANI (after dividing values by 100)
+            M[i, j] <- v
+            M[j, i] <- v
+        }
+    }
+
+    # Return the result
+    if (keep_asym) {
+        out <- list("D" = M, "D_asym" = M_asym)
+    } else {
+        out <- M
+    }
+
+    return(out)
+}
+
+
+
+```
+
