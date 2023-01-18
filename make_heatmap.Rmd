@@ -6,11 +6,9 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-	echo = TRUE,
-	message = FALSE,
-	warning = FALSE
-)
+
+library("ggplot2")
+library("ggtree")
 library(tibble)
 library(magrittr)
 library(gplots)
@@ -326,6 +324,7 @@ colors_1 = c(seq(90,90.9,length=1),seq(91,91.9,length=1),seq(92,92.9,length=1),s
 my_palette_cust_1 <- colorRampPalette(c( "#CCCCFF", "#DFFF00","#FFBF00", "#FF7F50", "#DE3163","#f74a36","#ab311f","#641E16","#0a0302"))(n = 9)
 
 
+
 dend1 <- ReadDendrogram(textConnection(write.tree(treobj_reroot_1))) 
 
 #par(mar = c(20, 2, 1, 20))
@@ -387,9 +386,852 @@ dev.off()
 
 
 ```
+# full tree PDF
+```{r fulltree}
 
-# CHROMO_Arch
+library("ggplot2")
+library("ggtree")
+# #treeobj <- ape::read.tree(file="9Genomes_paper/RAxML_bipartitionsBranchLabels.New9Gs.redo.Dec28_2022.tree") 
+# #RAxML_bipartitions.New9Gs.redo.March2022.tre
+# 
+# treeobj <- ape::read.tree(file="RAxML_bipartitions.New9Gs.redo.March2022.tre") 
+# # Reroot the trees
+# treobj_reroot_1 <- ape::root(treeobj, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1")
+# 
+# is_tip_1 <- treobj_reroot_1$edge[,2] <= length(treobj_reroot_1$tip.label)
+# ordered_tips_1 <- treobj_reroot_1$edge[is_tip_1, 2]
+# ordered_labels_1 <- treobj_reroot_1$tip.label[ordered_tips_1]
+# ordered_labels_1_Sub <- gsub("ncbi-genomes-2022-01-24/","",ordered_labels_1, perl=TRUE)
+# ordered_labels_1_Sub<- gsub(".fna$","",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub<- gsub("=_","",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub<- gsub(":","_",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_NODE.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_Scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_supercont.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_unitig_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_chromosome.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_sequence001.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_Assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_sequence.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_map_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_Contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_1246.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_Ga0310523_101.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# ordered_labels_1_Sub <- gsub("_strain_NBRC_102515.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+# treobj_reroot_1$tip.label <- ordered_labels_1_Sub
+# 
+# 
+# 
+# pdf(file = "9Genomes_paper/FULL_tree.raw.pdf", width = 35, height = 70)
+# p <- ggtree(treobj_reroot_1,  branch.length="none") + xlim(0,35) +
+#   geom_tiplab(size = 5) +
+#   geom_text2(aes(subset=!isTip, label=node), # labels all the nodes in the tree
+#              size = 6,
+#              color = "darkred", 
+#              hjust = 1, 
+#              vjust = 1) 
+# p
+# dev.off()
+# 
+# 
+# pdf(file = "9Genomes_paper/FULL_tree.2.pdf", width = 18, height = 65)
+# p <- ggtree(treobj_reroot_1) + xlim(0,8) +
+#   geom_tiplab(size = 5, align=FALSE, linetype='dashed', linesize=0.3, )+
+#     geom_nodelab(aes(label=label))
+#   # geom_text2(aes(subset=!isTip, label=node.label), # labels all the nodes in the tree
+#   #            size = 6,
+#   #            color = "darkred", 
+#   #            hjust = 1, 
+#   #            vjust = 1) 
+# p
+# dev.off()
+# 
+# 
+# pdf(file = "9Genomes_paper/FULL_tree.3.pdf", width = 18, height = 65)
+# p <- ggtree(treobj_reroot_1) + xlim(0,3) +
+#   geom_tiplab(size = 5, align=FALSE, linetype='dashed', linesize=0.3, hjust=-0.1)+
+#     geom_nodelab(aes(label=label), hjust=1)
+#   # geom_text2(aes(subset=!isTip, label=node.label), # labels all the nodes in the tree
+#   #            size = 6,
+#   #            color = "darkred", 
+#   #            hjust = 1, 
+#   #            vjust = 1) 
+# p
+# dev.off()
+# pdf(file = "9Genomes_paper/FULL_tree.3wOgroup.pdf", width =25, height = 65)
+# p <- ggtree(treobj_reroot_1) + xlim(0,8) +
+#   geom_tiplab(size = 5, align=FALSE, linetype='dashed', linesize=0.3, hjust=-0.1)+
+#     geom_nodelab(aes(label=label), hjust=1)
+#   # geom_text2(aes(subset=!isTip, label=node.label), # labels all the nodes in the tree
+#   #            size = 6,
+#   #            color = "darkred", 
+#   #            hjust = 1, 
+#   #            vjust = 1) 
+# p
+# dev.off()
+# 
+# treobj_reroot_1.ORIGINAL <- treobj_reroot_1
+# # ggtree(tr = tree, layout = 'circular') +
+# #   geom_tiplab(size = 2, aes(angle = angle))
+# # 
+# # # Save as PDF and force a 'huge' size plot
+# # ggsave("assets/test.pdf", width = 50, height = 50, units = "cm", limitsize = FALSE)
+
+```
+# Full Tree
 ```{r Chromo+Archangium}
+treeobj <- ape::read.tree(file="9Genomes_paper/RAxML_bipartitionsBranchLabels.New9Gs.redo.Dec28_2022.tree") 
+#treeobj <- ape::read.tree(file="9Genomes_paper/Janthino_RAxML_bipartitionsBranchLabels.New9Gs copy.tree") 
+#treeobj <- ape::read.tree(file="9Genomes_paper/test_Janthino_RAxML_bipartitionsBranchLabels.New9Gs copy.tree")
+#bootstraps<- ape::read.tree(file="9Genomes_paper/RAxML_bootstrap.New9Gs.redo.March2022")
+# # Reroot the trees
+#treeobj <- phytools::read.newick("9Genomes_paper/RAxML_bipartitionsBranchLabels.New9Gs.redo.April12_2022.tree")
+#treeobj <- ape::read.tree(file="9Genomes_paper/itol_export1.txt")
+
+# treobj_start <- ape::root(treobj_reroot_1.ORIGINAL, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1", resolve.root=TRUE)
+# #treobj_reroot_1 <- ape::root(treeobj, outgroup="Archangium_violaceum_Cb_vi76_GCF_000733295.1")
+
+
+ordered_labels_1 <- treeobj$tip.label
+ordered_labels_1_Sub <- gsub("ncbi-genomes-2022-01-24/","",ordered_labels_1, perl=TRUE)
+ordered_labels_1_Sub<- gsub(".fna$","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub("=_","",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub<- gsub(":","_",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_NODE.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_supercont.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_unitig_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly_with.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_chromosome.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence001.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_scaffold.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_sequence.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_map_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Contig.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_1246.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_Ga0310523_101.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("_strain_NBRC_102515.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("Chromobacterium_vaccinii_strain_HSC-77S12_GCF_011601295.1","Chromobacterium_piscinae_strain_HSC-77S12_GCF_011601295.1",ordered_labels_1_Sub, perl=TRUE)
+ordered_labels_1_Sub <- gsub("Massilia_oculi_strain_HSC-2F05_GCF_020208145.1","Massilia_sp__strain_HSC-2F05_GCF_020208145.1",ordered_labels_1_Sub, perl=TRUE)
+treeobj$tip.label <- ordered_labels_1_Sub
+
+
+#treobj_start<-
+
+treeobj$edge.length = treeobj$edge.length * 3
+p0 <- ggtree(treeobj) 
+p0.1 <- rotate(p0,352)
+p0.2 <- rotate(p0.1,355)
+#write.tree(treeobj, file="PRINTEDAPE_tree.tree")
+#write.nexus(treeobj, file="PRINTEDAPE_tree.nex")
+
+
+p1.full <- p0.2 +
+  geom_point2(aes(subset=(node==276 | node==330 | node==51 | node==63 | node==62 | node==336 | node==212 | node==127 | node==242)), shape=23, size=3, fill='darkviolet' )+
+  #geom_tiplab(aes(subset=(isTip), label=""), size = 2, align=TRUE, hjust=0) +
+  geom_tiplab(aes(subset=(node!=276 & node!=330 & node!=51 & node!=63 & node!=62 & node!=336 & node!=212 & node!=127 & node!=242 & isTip)), size = 5, align=TRUE, hjust=-0.25, linesize=0.3) +
+  geom_tiplab(aes(subset=(node==276 | node==330 | node==51 | node==63 | node==62 | node==336 | node==212 | node==127 | node==242)), align=TRUE, 
+             size = 7,
+             color = "darkviolet",
+             hjust = -0.25,
+             vjust = 0.5)+
+  #geom_tiplab(size = 5, align=TRUE, linetype='dashed', linesize=0.3, hjust=-0.1)+
+  #geom_nodelab(size= 4 )+
+  xlim(6.5,16.5)+
+  geom_text2(aes(subset=(!isTip), label=label), 
+             size = 4,
+             color = "darkred",
+             hjust = 1,
+             vjust = 0.5)+
+geom_treescale(x=2, y=10, fontsize= 7, linesize= 1.5) 
+
+pdf(file = "9Genomes_paper/Full_tree.Jan14.labels.4.pdf", width = 24, height = 75)
+print(p1.full)
+dev.off() 
+
+
+
+
+```
+# CHROMO_Arch
+```{r}
+p1 <- p0.2
+# pdf(file = "9Genomes_paper/reference_Tree.p1.pdf", width = 35, height = 65)
+# print(p1)
+# dev.off() 
+p2 <- p1 %>% collapse(node=c(357)) + 
+  geom_point2(aes(subset=(node==357)), shape=21, size=5, fill='seagreen4' )+
+  geom_text2(aes(subset=(node==357), label='Janthinobacterium'), 
+             size = 8,
+             color = "seagreen4",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p2.Jan14.pdf", width = 35, height = 65)
+print(p2)
+dev.off()
+
+p3 <- p2 %>% collapse(node=c(441)) + 
+  geom_point2(aes(subset=(node==441)), shape=21, size=5, fill='deeppink2' )+
+  geom_text2(aes(subset=(node==441), label='Duganella - [Massilia]'), 
+             size = 8,
+             color = "deeppink2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p3.Jan14.pdf", width = 35, height = 65)
+print(p3)
+dev.off()
+
+p4 <- p3 %>% collapse(node=c(683)) + 
+  geom_point2(aes(subset=(node==683)), shape=21, size=5, fill='blue3' )+
+  geom_text2(aes(subset=(node==683), label='Aquitalea'), 
+             size = 8,
+             color = "blue3",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p4.Jan14.pdf", width = 35, height = 65)
+print(p4)
+dev.off()
+
+# p5 <- p4 %>% collapse(node=c(512)) + 
+#   geom_point2(aes(subset=(node==512)), shape=21, size=5, fill='deeppink2' )+
+#   geom_text2(aes(subset=(node==512), label='Massilia'), 
+#              size = 8,
+#              color = "deeppink2",
+#              hjust = -0.2,
+#              vjust = 0.5)
+# pdf(file = "9Genomes_paper/reference_Tree.p5.Jan14.pdf", width = 35, height = 65)
+# print(p5)
+# dev.off()
+
+# p6 <- p5 %>% collapse(node=c(493)) + 
+#   geom_point2(aes(subset=(node==493)), shape=21, size=5, fill='deeppink2' )+
+#   geom_text2(aes(subset=(node==493), label='Duganella'), 
+#              size = 8,
+#              color = "deeppink2",
+#              hjust = -0.2,
+#              vjust = 0.5)
+# pdf(file = "9Genomes_paper/reference_Tree.p6.Jan14.pdf", width = 35, height = 65)
+# print(p6)
+# dev.off()
+
+
+p7 <- p4 %>% collapse(node=c(496)) + 
+  geom_point2(aes(subset=(node==496)), shape=21, size=5, fill='deeppink2' )+
+  geom_text2(aes(subset=(node==496), label='Massilia'), 
+             size = 8,
+             color = "deeppink2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p7.Jan14.pdf", width = 25, height = 30)
+print(p7)
+dev.off()
+
+p8 <- p7 %>% collapse(node=c(518)) + 
+  geom_point2(aes(subset=(node==518)), shape=21, size=5, fill='turquoise2' )+
+  geom_text2(aes(subset=(node==518), label='Massilia'), 
+             size = 8,
+             color = "turquoise2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p8.Jan14.pdf", width = 25, height = 30)
+print(p8)
+dev.off()
+
+
+
+
+
+
+p9 <- p8 %>% collapse(node=c(353)) + 
+  geom_point2(aes(subset=(node==353)), shape=21, size=5, fill='seagreen4' )+
+  geom_text2(aes(subset=(node==353), label='Janthinobacterium'), 
+             size = 8,
+             color = "seagreen4",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p9.Jan14.pdf", width = 25, height = 30)
+print(p9)
+dev.off()
+
+p10 <- p9 %>% 
+  collapse(node=c(590)) + 
+  geom_point2(aes(subset=(node==590)), shape=21, size=5, fill='yellow2' )+
+  geom_text2(aes(subset=(node==590), label='Iodobacter'), 
+             size = 8,
+             color = "yellow2",
+             hjust = -0.2,
+             vjust = 0.5)
+
+
+p11 <- p10 +
+  geom_point2(aes(subset=(node==276 | node==330)), shape=23, size=5, fill='darkviolet' )+
+  #geom_tiplab(aes(subset=(isTip), label=""), size = 2, align=TRUE, hjust=0) +
+  geom_tiplab(aes(subset=(node!=276 & node!=330 & isTip)), size = 5, align=TRUE, hjust=-0.25) +
+  geom_tiplab(aes(subset=(node==276 | node==330)), align=TRUE, 
+             size = 8,
+             color = "darkviolet",
+             hjust = -0.25,
+             vjust = 0.5)+
+  geom_nodelab(aes(label=label), hjust=0, size =5)+
+  geom_treescale(x=3.2, y=12, fontsize= 7, linesize= 1.5) +
+  xlim(3,4.55) 
+
+
+
+
+
+pdf(file = "9Genomes_paper/Chromo_Tree.p11.Jan14.Colors.pdf", width = 32, height = 28)
+print(p11)
+dev.off()
+
+
+
+
+
+```
+
+# Janthino_Arch
+```{r Chromo+Archangium}
+
+p1 <- p0.2
+# pdf(file = "9Genomes_paper/reference_Tree.p1.pdf", width = 35, height = 65)
+# print(p1)
+# dev.off() 
+p2 <- p1 %>% collapse(node=c(597)) + 
+  geom_point2(aes(subset=(node==597)), shape=21, size=5, fill='orchid1' )+
+  geom_text2(aes(subset=(node==597), label='Chromobacterium'), 
+             size = 8,
+             color = "orchid1",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p2.Jan14.pdf", width = 35, height = 65)
+print(p2)
+dev.off()
+
+p3 <- p2 %>% collapse(node=c(441)) + 
+  geom_point2(aes(subset=(node==441)), shape=21, size=5, fill='deeppink2' )+
+  geom_text2(aes(subset=(node==441), label='Duganella - [Massilia]'), 
+             size = 8,
+             color = "deeppink2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p3.Jan14.pdf", width = 35, height = 65)
+print(p3)
+dev.off()
+
+p4 <- p3 %>% collapse(node=c(683)) + 
+  geom_point2(aes(subset=(node==683)), shape=21, size=5, fill='blue3' )+
+  geom_text2(aes(subset=(node==683), label='Aquitalea'), 
+             size = 8,
+             color = "blue3",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p4.Jan14.pdf", width = 35, height = 65)
+print(p4)
+dev.off()
+
+
+p7 <- p4 %>% collapse(node=c(496)) + 
+  geom_point2(aes(subset=(node==496)), shape=21, size=5, fill='deeppink2' )+
+  geom_text2(aes(subset=(node==496), label='Massilia'), 
+             size = 8,
+             color = "deeppink2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p7.Jan14.pdf", width = 25, height = 30)
+print(p7)
+dev.off()
+
+p8 <- p7 %>% collapse(node=c(518)) + 
+  geom_point2(aes(subset=(node==518)), shape=21, size=5, fill='turquoise2' )+
+  geom_text2(aes(subset=(node==518), label='Massilia'), 
+             size = 8,
+             color = "turquoise2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p8.Jan14.pdf", width = 25, height = 30)
+print(p8)
+dev.off()
+
+# p9 <- p8 %>% collapse(node=c(353)) + 
+#   geom_point2(aes(subset=(node==353)), shape=21, size=5, fill='seagreen4' )+
+#   geom_text2(aes(subset=(node==353), label='Janthinobacterium'), 
+#              size = 8,
+#              color = "seagreen4",
+#              hjust = -0.2,
+#              vjust = 0.5)
+# pdf(file = "9Genomes_paper/reference_Tree.p9.Jan14.pdf", width = 25, height = 30)
+# print(p9)
+# dev.off()
+
+p10 <- p8 %>% 
+  collapse(node=c(590)) + 
+  geom_point2(aes(subset=(node==590)), shape=21, size=5, fill='yellow2' )+
+  geom_text2(aes(subset=(node==590), label='Iodobacter'), 
+             size = 8,
+             color = "yellow2",
+             hjust = -0.2,
+             vjust = 0.5)
+
+
+
+
+
+p11 <- p10 + #theme_tree2()+
+  geom_point2(aes(subset=(node==51 | node==63 | node==62)), shape=23, size=5, fill='darkviolet' )+
+  #geom_tiplab(aes(subset=(isTip), label=""), size = 2, align=TRUE, hjust=0) +
+  geom_tiplab(aes(subset=(node!=51 & node!=63 & node!=62 & isTip)), size = 5, align=TRUE, hjust=-0.25) +
+  geom_tiplab(aes(subset=(node==51 | node==63 | node==62)), align=TRUE, 
+             size = 6.5,
+             color = "darkviolet",
+             hjust = -0.25,
+             vjust = 0.5)+
+  geom_nodelab(aes(label=label), hjust=0, size =5)+
+  geom_treescale(x=3.7, y=12, fontsize= 7, linesize= 1.5) +
+  xlim(3.55,4.15) 
+
+#Janthinobacterium_lividum_strain_UCD_MED1_GCF_006152155.1
+#Janthinobacterium_sp__HSC−3S05_GCF_020208155.1
+#Janthinobacterium_lividum_strain_HSC−65S10_GCF_011601275.1
+pdf(file = "9Genomes_paper/Janthino_Tree.p10.Jan14.Colors.pdf", width = 25, height = 26)
+print(p11)
+dev.off()
+
+```
+
+# Iodobacter_Arch
+```{r Chromo+Archangium}
+
+p1 <- p0.2
+# pdf(file = "9Genomes_paper/reference_Tree.p1.pdf", width = 35, height = 65)
+# print(p1)
+# dev.off() 
+p2 <- p1 %>% collapse(node=c(597)) + 
+  geom_point2(aes(subset=(node==597)), shape=21, size=5, fill='orchid1' )+
+  geom_text2(aes(subset=(node==597), label='Chromobacterium'), 
+             size = 5,
+             color = "orchid1",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p2.Jan14.pdf", width = 35, height = 65)
+print(p2)
+dev.off()
+
+p3 <- p2 %>% collapse(node=c(441)) + 
+  geom_point2(aes(subset=(node==441)), shape=21, size=5, fill='deeppink2' )+
+  geom_text2(aes(subset=(node==441), label='Duganella - [Massilia]'), 
+             size = 5,
+             color = "deeppink2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p3.Jan14.pdf", width = 35, height = 65)
+print(p3)
+dev.off()
+
+p4 <- p3 %>% collapse(node=c(683)) + 
+  geom_point2(aes(subset=(node==683)), shape=21, size=5, fill='blue3' )+
+  geom_text2(aes(subset=(node==683), label='Aquitalea'), 
+             size = 5,
+             color = "blue3",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p4.Jan14.pdf", width = 35, height = 65)
+print(p4)
+dev.off()
+
+
+p7 <- p4 %>% collapse(node=c(496)) + 
+  geom_point2(aes(subset=(node==496)), shape=21, size=5, fill='deeppink2' )+
+  geom_text2(aes(subset=(node==496), label='Massilia'), 
+             size = 5,
+             color = "deeppink2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p7.Jan14.pdf", width = 25, height = 30)
+print(p7)
+dev.off()
+
+p8 <- p7 %>% collapse(node=c(518)) + 
+  geom_point2(aes(subset=(node==518)), shape=21, size=5, fill='turquoise2' )+
+  geom_text2(aes(subset=(node==518), label='Massilia'), 
+             size = 5,
+             color = "turquoise2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p8.Jan14.pdf", width = 25, height = 30)
+print(p8)
+dev.off()
+
+p9 <- p8 %>% collapse(node=c(353)) +
+  geom_point2(aes(subset=(node==353)), shape=21, size=5, fill='seagreen4' )+
+  geom_text2(aes(subset=(node==353), label='Janthinobacterium'),
+             size = 5,
+             color = "seagreen4",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p9.Jan14.pdf", width = 25, height = 30)
+print(p9)
+dev.off()
+
+p10 <- p9 %>% collapse(node=c(357)) + 
+  geom_point2(aes(subset=(node==357)), shape=21, size=5, fill='seagreen4' )+
+  geom_text2(aes(subset=(node==357), label='Janthinobacterium'), 
+             size = 5,
+             color = "seagreen4",
+             hjust = -0.2,
+             vjust = 0.5)
+
+
+p11 <- p10 + theme_tree2()+
+  geom_point2(aes(subset=(node==242 )), shape=23, size=3, fill='darkviolet' )+
+  #geom_tiplab(aes(subset=(isTip), label=""), size = 2, align=TRUE, hjust=0) +
+  geom_tiplab(aes(subset=(node!=242 & isTip)), size = 3, align=TRUE, hjust=-0.25) +
+  geom_tiplab(aes(subset=(node==242 )), align=TRUE, 
+             size = 5,
+             color = "darkviolet",
+             hjust = -0.25,
+             vjust = 0.5)+
+  geom_nodelab(aes(label=label), hjust=0, size =5)+
+  geom_treescale(x=3, y=4, fontsize= 3, linesize= 1.5) +
+  xlim(3,5.51) 
+
+#Janthinobacterium_lividum_strain_UCD_MED1_GCF_006152155.1
+#Janthinobacterium_sp__HSC−3S05_GCF_020208155.1
+#Janthinobacterium_lividum_strain_HSC−65S10_GCF_011601275.1
+
+
+
+pdf(file = "9Genomes_paper/Iodobacter_Tree.p10.Jan14.Colors.pdf", width = 10.5, height = 5)
+print(p11)
+dev.off()
+
+```
+# Massilia_Arch
+```{r Chromo+Archangium}
+
+p1 <- p0.2
+# pdf(file = "9Genomes_paper/reference_Tree.p1.pdf", width = 35, height = 65)
+# print(p1)
+# dev.off() 
+p2 <- p1 %>% collapse(node=c(597)) + 
+  geom_point2(aes(subset=(node==597)), shape=21, size=5, fill='orchid1' )+
+  geom_text2(aes(subset=(node==597), label='Chromobacterium'), 
+             size = 5,
+             color = "orchid1",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p2.Jan14.pdf", width = 35, height = 65)
+print(p2)
+dev.off()
+
+p3 <- p2 %>% collapse(node=c(442)) + 
+  geom_point2(aes(subset=(node==442)), shape=21, size=5, fill='deeppink2' )+
+  geom_text2(aes(subset=(node==442), label='Duganella'), 
+             size = 5,
+             color = "deeppink2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p3.Jan14.pdf", width = 35, height = 65)
+print(p3)
+dev.off()
+
+p4 <- p3 %>% collapse(node=c(683)) + 
+  geom_point2(aes(subset=(node==683)), shape=21, size=5, fill='blue3' )+
+  geom_text2(aes(subset=(node==683), label='Aquitalea'), 
+             size = 5,
+             color = "blue3",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p4.Jan14.pdf", width = 35, height = 65)
+print(p4)
+dev.off()
+
+
+# p7 <- p4 %>% collapse(node=c(496)) + 
+#   geom_point2(aes(subset=(node==496)), shape=21, size=2, fill='deeppink2' )+
+#   geom_text2(aes(subset=(node==496), label='Massilia'), 
+#              size = 2,
+#              color = "deeppink2",
+#              hjust = -0.2,
+#              vjust = 0.5)
+# pdf(file = "9Genomes_paper/reference_Tree.p7.Jan14.pdf", width = 25, height = 30)
+# print(p7)
+# dev.off()
+
+p8 <- p4 %>% collapse(node=c(590)) +
+  geom_point2(aes(subset=(node==590)), shape=21, size=5, fill='yellow2' )+
+  geom_text2(aes(subset=(node==590), label='Iodobacter'),
+             size = 5,
+             color = "yellow2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p8.Jan14.pdf", width = 25, height = 30)
+print(p8)
+dev.off()
+
+p9 <- p8 %>% collapse(node=c(353)) +
+  geom_point2(aes(subset=(node==353)), shape=21, size=5, fill='seagreen4' )+
+  geom_text2(aes(subset=(node==353), label='Janthinobacterium'),
+             size = 5,
+             color = "seagreen4",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p9.Jan14.pdf", width = 25, height = 30)
+print(p9)
+dev.off()
+
+p10 <- p9 %>% collapse(node=c(357)) + 
+  geom_point2(aes(subset=(node==357)), shape=21, size=5, fill='seagreen4' )+
+  geom_text2(aes(subset=(node==357), label='Janthinobacterium'), 
+             size = 5,
+             color = "seagreen4",
+             hjust = -0.2,
+             vjust = 0.5)
+
+
+p11 <- p10 +# theme_tree2()+
+  geom_point2(aes(subset=(node==212 )), shape=23, size=3, fill='darkviolet' )+
+  #geom_tiplab(aes(subset=(isTip), label=""), size = 2, align=TRUE, hjust=0) +
+  geom_tiplab(aes(subset=(node!=212 & isTip)), size = 3, align=TRUE, hjust=-0.25) +
+  geom_tiplab(aes(subset=(node==212)), align=TRUE, 
+             size = 5,
+             color = "darkviolet",
+             hjust = -0.25,
+             vjust = 0.5)+
+  geom_nodelab(aes(label=label), hjust=0, size =5)+
+  geom_treescale(x=3.5, y=12, fontsize= 5, linesize= 1.5) +
+  xlim(3.4,4.51) 
+
+
+
+pdf(file = "9Genomes_paper/Massilia_Tree.p10.Jan14.Colors.pdf", width = 15.5, height = 20)
+print(p11)
+dev.off()
+
+```
+
+
+# Duganella_Arch
+```{r Chromo+Archangium}
+
+p1 <- p0.2
+# pdf(file = "9Genomes_paper/reference_Tree.p1.pdf", width = 35, height = 65)
+# print(p1)
+# dev.off() 
+p2 <- p1 %>% collapse(node=c(597)) + 
+  geom_point2(aes(subset=(node==597)), shape=21, size=5, fill='orchid1' )+
+  geom_text2(aes(subset=(node==597), label='Chromobacterium'), 
+             size = 5,
+             color = "orchid1",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p2.Jan14.pdf", width = 35, height = 65)
+print(p2)
+dev.off()
+
+p3 <- p2 %>% collapse(node=c(518)) + 
+  geom_point2(aes(subset=(node==518)), shape=21, size=5, fill='turquoise2' )+
+  geom_text2(aes(subset=(node==518), label='Massilia'), 
+             size = 5,
+             color = "turquoise2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p3.Jan14.pdf", width = 35, height = 65)
+print(p3)
+dev.off()
+
+p4 <- p3 %>% collapse(node=c(683)) + 
+  geom_point2(aes(subset=(node==683)), shape=21, size=5, fill='blue3' )+
+  geom_text2(aes(subset=(node==683), label='Aquitalea'), 
+             size = 5,
+             color = "blue3",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p4.Jan14.pdf", width = 35, height = 65)
+print(p4)
+dev.off()
+
+
+# p7 <- p4 %>% collapse(node=c(496)) + 
+#   geom_point2(aes(subset=(node==496)), shape=21, size=2, fill='deeppink2' )+
+#   geom_text2(aes(subset=(node==496), label='Massilia'), 
+#              size = 2,
+#              color = "deeppink2",
+#              hjust = -0.2,
+#              vjust = 0.5)
+# pdf(file = "9Genomes_paper/reference_Tree.p7.Jan14.pdf", width = 25, height = 30)
+# print(p7)
+# dev.off()
+
+p8 <- p4 %>% collapse(node=c(590)) +
+  geom_point2(aes(subset=(node==590)), shape=21, size=5, fill='yellow2' )+
+  geom_text2(aes(subset=(node==590), label='Iodobacter'),
+             size = 5,
+             color = "yellow2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p8.Jan14.pdf", width = 25, height = 30)
+print(p8)
+dev.off()
+
+p9 <- p8 %>% collapse(node=c(353)) +
+  geom_point2(aes(subset=(node==353)), shape=21, size=5, fill='seagreen4' )+
+  geom_text2(aes(subset=(node==353), label='Janthinobacterium'),
+             size = 5,
+             color = "seagreen4",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p9.Jan14.pdf", width = 25, height = 30)
+print(p9)
+dev.off()
+
+p10 <- p9 %>% collapse(node=c(357)) + 
+  geom_point2(aes(subset=(node==357)), shape=21, size=5, fill='seagreen4' )+
+  geom_text2(aes(subset=(node==357), label='Janthinobacterium'), 
+             size = 5,
+             color = "seagreen4",
+             hjust = -0.2,
+             vjust = 0.5)
+
+
+
+
+
+p11 <- p10 + 
+  geom_point2(aes(subset=(node==127)), shape=23, size=5, fill='darkviolet' )+
+  #geom_tiplab(aes(subset=(isTip), label=""), size = 2, align=TRUE, hjust=0) +
+  geom_tiplab(aes(subset=(node!=127 & isTip)), size = 2.7, align=TRUE, hjust=-0.25) +
+  geom_tiplab(aes(subset=(node==127)), align=TRUE, 
+             size = 5,
+             color = "darkviolet",
+             hjust = -0.25,
+             vjust = 0.5)+
+  geom_nodelab(aes(label=label), hjust=0, size =3)+
+  geom_treescale(x=3.6, y=5, fontsize= 5, linesize= 1.5) +
+  xlim(3.5,4.5) 
+
+pdf(file = "9Genomes_paper/Duganella_Tree.p10.Jan14.Colors.pdf", width = 14, height = 15)
+print(p11)
+dev.off()
+
+```
+# Aquitalea_Arch
+```{r Chromo+Archangium}
+
+p1 <- p0.2
+# pdf(file = "9Genomes_paper/reference_Tree.p1.pdf", width = 35, height = 65)
+# print(p1)
+# dev.off() 
+p2 <- p1 %>% collapse(node=c(597)) + 
+  geom_point2(aes(subset=(node==597)), shape=21, size=5, fill='orchid1' )+
+  geom_text2(aes(subset=(node==597), label='Chromobacterium'), 
+             size = 5,
+             color = "orchid1",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p2.Jan14.pdf", width = 35, height = 65)
+print(p2)
+dev.off()
+
+p3 <- p2 %>% collapse(node=c(441)) + 
+  geom_point2(aes(subset=(node==441)), shape=21, size=5, fill='deeppink2' )+
+  geom_text2(aes(subset=(node==441), label='Duganella - [Massilia]'), 
+             size = 5,
+             color = "deeppink2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p3.Jan14.pdf", width = 35, height = 65)
+print(p3)
+dev.off()
+
+# p4 <- p3 %>% collapse(node=c(683)) + 
+#   geom_point2(aes(subset=(node==683)), shape=21, size=5, fill='blue3' )+
+#   geom_text2(aes(subset=(node==683), label='Aquitalea'), 
+#              size = 5,
+#              color = "blue3",
+#              hjust = -0.2,
+#              vjust = 0.5)
+# pdf(file = "9Genomes_paper/reference_Tree.p4.Jan14.pdf", width = 35, height = 65)
+# print(p4)
+# dev.off()
+
+
+p7 <- p3 %>% collapse(node=c(518)) +
+  geom_point2(aes(subset=(node==518)), shape=21, size=5, fill='turquoise2' )+
+  geom_text2(aes(subset=(node==518), label='Massilia'),
+             size = 5,
+             color = "turquoise2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p7.Jan14.pdf", width = 25, height = 30)
+print(p7)
+dev.off()
+
+p8 <- p7 %>% collapse(node=c(590)) +
+  geom_point2(aes(subset=(node==590)), shape=21, size=5, fill='yellow2' )+
+  geom_text2(aes(subset=(node==590), label='Iodobacter'),
+             size = 5,
+             color = "yellow2",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p8.Jan14.pdf", width = 25, height = 30)
+print(p8)
+dev.off()
+
+p9 <- p8 %>% collapse(node=c(353)) +
+  geom_point2(aes(subset=(node==353)), shape=21, size=5, fill='seagreen4' )+
+  geom_text2(aes(subset=(node==353), label='Janthinobacterium'),
+             size = 5,
+             color = "seagreen4",
+             hjust = -0.2,
+             vjust = 0.5)
+pdf(file = "9Genomes_paper/reference_Tree.p9.Jan14.pdf", width = 25, height = 30)
+print(p9)
+dev.off()
+
+p10 <- p9 %>% collapse(node=c(357)) + 
+  geom_point2(aes(subset=(node==357)), shape=21, size=5, fill='seagreen4' )+
+  geom_text2(aes(subset=(node==357), label='Janthinobacterium'), 
+             size = 5,
+             color = "seagreen4",
+             hjust = -0.2,
+             vjust = 0.5)
+
+p11 <- p10 + theme_tree2()+
+  geom_point2(aes(subset=(node==336)), shape=23, size=2, fill='darkviolet' )+
+  #geom_tiplab(aes(subset=(isTip), label=""), size = 2, align=TRUE, hjust=0) +
+  geom_tiplab(aes(subset=(node!=336 & isTip)), size = 2.7, align=TRUE, hjust=-0.25) +
+  geom_tiplab(aes(subset=(node==336)), align=TRUE, 
+             size = 5,
+             color = "darkviolet",
+             hjust = -0.25,
+             vjust = 0.5)+
+  geom_nodelab(aes(label=label), hjust=0, size =5)+
+  geom_treescale(x=3.7, y=4, fontsize= 5, linesize= 1.5) +
+  xlim(3.6,4.5) 
+
+
+
+pdf(file = "9Genomes_paper/Aquitalae_Tree.p10.Jan14.Colors.pdf", width = 15, height = 8)
+print(p11)
+dev.off()
+
+```
+## CHROMO_Arch_old
+```{r}
 # For Chromobacterium:
 # Make sure our 2 strains are there: HSC-77S12 GCF_011601295.1, and HSC-31F16 GCF_011602385.1
 ani_table <- read.delim(file = "9Genomes_paper/fastANI_Dec22.tsv", header = FALSE, sep = "\t", stringsAsFactors = FALSE)[, 1 : 3]
@@ -438,6 +1280,13 @@ ordered_labels_1_Sub <- gsub("-assembly.*(_GCF_.*)$","\\1",ordered_labels_1_Sub,
 ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
 ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
 ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
+
+treobj_reroot_1$tip.label <- ordered_labels_1_Sub
+write.tree(treobj_reroot_1, file="9Genomes_paper/Chromo_subtree.tree")
+
+
+
+
 
 
 
@@ -608,7 +1457,8 @@ ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_label
 ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
 
 
-
+treobj_reroot_1$tip.label <- ordered_labels_1_Sub
+write.tree(treobj_reroot_1, file="9Genomes_paper/Aquitelea_subtree.tree")
 
 my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
 my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
@@ -791,7 +1641,8 @@ ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_label
 ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
 ordered_labels_1_Sub <- gsub("_Ga0310523_101.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
 
-
+treobj_reroot_1$tip.label <- ordered_labels_1_Sub
+write.tree(treobj_reroot_1, file="9Genomes_paper/Iodobacter_subtree.tree")
 
 
 my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
@@ -977,7 +1828,8 @@ ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_label
 ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
 
 
-
+treobj_reroot_1$tip.label <- ordered_labels_1_Sub
+write.tree(treobj_reroot_1, file="9Genomes_paper/Duganella_subtree.tree")
 
 my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
 my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
@@ -1159,7 +2011,8 @@ ordered_labels_1_Sub <- gsub("_trimmed.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, 
 ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
 ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
 
-
+treobj_reroot_1$tip.label <- ordered_labels_1_Sub
+write.tree(treobj_reroot_1, file="9Genomes_paper/Massilia_subtree.tree")
 
 
 my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
@@ -1343,7 +2196,8 @@ ordered_labels_1_Sub <- gsub("_DSM_26508_Camzn_.*(_GCF_.*)$","\\1",ordered_label
 ordered_labels_1_Sub <- gsub("_20140212_NGS14_02_003-IR17.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
 ordered_labels_1_Sub <- gsub("_strain_NBRC_102515.*(_GCF_.*)$","\\1",ordered_labels_1_Sub, perl=TRUE)
 
-
+treobj_reroot_1$tip.label <- ordered_labels_1_Sub
+write.tree(treobj_reroot_1, file="9Genomes_paper/Janthino_subtree.tree")
 
 my_palette_2 <- colorRampPalette(c(rgb(1,1,1,1), rgb(1,0,1,0)), alpha = FALSE)(6)
 my_palette_3<- c("#FFFFFF","#9455f4","#854ddc","#7644c3","#683bab","#593392")
